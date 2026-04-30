@@ -1,0 +1,102 @@
+const Participant = require('../models/Participant');
+const Event = require('../models/Event');
+const { parseCSV } = require('../services/csv.service');
+const { generateToken, generateQRCode } = require('../services/qr.service');
+const { sendTicketEmail } = require('../services/email.service');
+
+exports.getParticipantsByEvent = async (req, res) => {
+  try {
+    const participants = await Participant.find({ event: req.params.eventId }).sort('-createdAt');
+    res.json(participants);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.uploadCSV = async (req, res) => {
+  try {
+    const { eventId } = req.body;
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+
+    if (!req.file) return res.status(400).json({ message: 'Please upload a CSV file' });
+
+    const rows = await parseCSV(req.file.path);
+    const results = { success: 0, failed: 0, errors: [] };
+
+    for (const row of rows) {
+      try {
+        const email = row['Email'] || row['email'] || row['Email Address'];
+        const name = row['Name'] || row['name'] || row['Full Name'];
+        const phone = row['Phone'] || row['phone'] || '';
+
+        if (!email || !name) {
+          throw new Error('Name or Email missing in row');
+        }
+
+        const token = generateToken();
+        const qrDataUrl = await generateQRCode(token);
+
+        const participant = await Participant.create({
+          name,
+          email,
+          phone,
+          event: eventId,
+          token,
+          qrImageUrl: qrDataUrl,
+        });
+
+        // Try to send email
+        try {
+          await sendTicketEmail({ participant, event, qrDataUrl });
+          await Participant.findByIdAndUpdate(participant._id, {
+            emailSent: true, emailSentAt: new Date(),
+          });
+          results.success++;
+        } catch (emailErr) {
+          console.error(`Failed to send email to ${email}:`, emailErr.message);
+          results.failed++;
+          results.errors.push({ row, error: `Email error: ${emailErr.message}` });
+        }
+      } catch (err) {
+        results.failed++;
+        results.errors.push({ row, error: err.message });
+      }
+    }
+
+    res.json({ message: 'Upload complete', results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.resendEmail = async (req, res) => {
+  try {
+    const participant = await Participant.findById(req.params.id).populate('event');
+    if (!participant) return res.status(404).json({ message: 'Participant not found' });
+
+    await sendTicketEmail({ 
+        participant, 
+        event: participant.event, 
+        qrDataUrl: participant.qrImageUrl 
+    });
+
+    await Participant.findByIdAndUpdate(req.params.id, { 
+        emailSent: true, 
+        emailSentAt: new Date() 
+    });
+
+    res.json({ message: 'Email resent' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteParticipant = async (req, res) => {
+  try {
+    await Participant.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Participant deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

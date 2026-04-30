@@ -1,0 +1,14 @@
+{
+  "name": "event-verification-portal",
+  "version": "1.0.0",
+  "description": "Full-stack MERN application for event check-in via unique QR codes",
+  "scripts": {
+    "start": "node server/server.js",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

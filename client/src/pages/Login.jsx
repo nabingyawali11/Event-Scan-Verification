@@ -35,7 +35,7 @@ export default function Login() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh]">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
       <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
         <h2 className="text-3xl font-bold text-center text-slate-800 mb-2">
           {isLogin ? 'Organizer Login' : 'Create Account'}

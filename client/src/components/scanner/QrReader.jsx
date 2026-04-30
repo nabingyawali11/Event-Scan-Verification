@@ -45,22 +45,65 @@ export default function QrReader() {
   }, []);
 
   return (
-    <div className="max-w-md mx-auto">
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
-        <div id="qr-reader" className="w-full" />
-        {loading && <div className="p-8 text-center bg-slate-50"><RefreshCw className="animate-spin mx-auto text-indigo-600 mb-2" /><p>Verifying...</p></div>}
+    <div className="max-w-md mx-auto px-4">
+      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
+        <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+           <h3 className="font-bold text-slate-800">Scanner View</h3>
+           <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+        </div>
+
+        <div id="qr-reader" className="w-full !border-none" />
+
+        {!result && !loading && (
+          <div className="p-6 bg-amber-50 border-t border-amber-100">
+             <div className="flex items-start space-x-3">
+                <AlertCircle className="text-amber-600 shrink-0" size={18} />
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  <strong>Note:</strong> Camera access requires a secure connection (HTTPS). 
+                  If you are testing on a mobile device, ensure you are using a secure tunnel or localhost.
+                </p>
+             </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="p-12 text-center bg-white border-t border-slate-100">
+             <RefreshCw className="animate-spin mx-auto text-indigo-600 mb-4" size={32} />
+             <p className="text-slate-600 font-medium">Verifying Ticket...</p>
+          </div>
+        )}
+
         {result && (
-          <div className={`p-8 text-center ${result.type === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
-            {result.type === 'success' ? <CheckCircle2 size={64} className="mx-auto text-green-500 mb-4" /> : <XCircle size={64} className="mx-auto text-red-500 mb-4" />}
-            <h3 className="text-2xl font-bold mb-4">{result.message}</h3>
+          <div className={`p-8 text-center animate-in zoom-in-95 duration-200 border-t border-slate-100 ${result.type === 'success' ? 'bg-green-50' : 'bg-red-50'}`}>
+            {result.type === 'success' ? (
+              <CheckCircle2 size={72} className="mx-auto text-green-500 mb-4" />
+            ) : (
+              <XCircle size={72} className="mx-auto text-red-500 mb-4" />
+            )}
+            
+            <h3 className={`text-2xl font-bold mb-6 ${result.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+              {result.message}
+            </h3>
+            
             {result.participant && (
-              <div className="text-left bg-white/50 p-4 rounded-xl space-y-2">
-                <p><strong>Name:</strong> {result.participant.name}</p>
-                <p><strong>Email:</strong> {result.participant.email}</p>
-                <p><strong>Event:</strong> {result.participant.event}</p>
+              <div className="text-left bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-white/50 space-y-3 mb-6 shadow-sm">
+                <div>
+                  <p className="text-xs text-slate-400 font-bold uppercase">Participant</p>
+                  <p className="font-bold text-slate-800">{result.participant.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-bold uppercase">Event</p>
+                  <p className="text-slate-700">{result.participant.event}</p>
+                </div>
               </div>
             )}
-            <button onClick={() => setResult(null)} className="w-full mt-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Scan Next</button>
+            
+            <button 
+              onClick={() => setResult(null)} 
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
+            >
+              Scan Next Ticket
+            </button>
           </div>
         )}
       </div>

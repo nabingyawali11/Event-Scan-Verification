@@ -59,6 +59,8 @@ export default function EventDetail() {
     p.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const pendingEmails = participants?.filter(p => !p.emailSent).length || 0;
+
   if (eventLoading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="animate-spin text-indigo-600" size={40} />
@@ -86,10 +88,13 @@ export default function EventDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg shadow-indigo-200">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <h3 className="text-lg font-semibold mb-2 flex items-center">
               <Upload size={20} className="mr-2" />
               Upload Participants
             </h3>
+            <p className="text-indigo-100 text-xs mb-4">
+              Tickets with QR codes will be sent automatically to each participant's email after upload.
+            </p>
             <CsvDropzone eventId={id} onSuccess={() => queryClient.invalidateQueries(['participants', id])} />
           </div>
 
@@ -101,8 +106,14 @@ export default function EventDetail() {
                 <span className="font-bold text-slate-800 text-xl">{participants?.length || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Checked In</span>
+                <span className="text-slate-500">Tickets Sent</span>
                 <span className="font-bold text-green-600 text-xl">
+                    {participants?.filter(p => p.emailSent).length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Checked In</span>
+                <span className="font-bold text-indigo-600 text-xl">
                     {participants?.filter(p => p.checkedIn).length || 0}
                 </span>
               </div>
@@ -110,10 +121,14 @@ export default function EventDetail() {
           </div>
         </div>
 
+
         <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-              <h3 className="text-xl font-bold text-slate-800">Participant List</h3>
+              <div className="flex items-center space-x-4">
+                <h3 className="text-xl font-bold text-slate-800">Participant List</h3>
+              </div>
+
               <div className="relative w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input 
@@ -132,7 +147,7 @@ export default function EventDetail() {
                   <tr>
                     <th className="px-6 py-4">Name</th>
                     <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Email</th>
+                    <th className="px-6 py-4">Email & Tickets</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -146,7 +161,6 @@ export default function EventDetail() {
                       <tr key={p._id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <p className="font-semibold text-slate-800">{p.name}</p>
-                          <p className="text-xs text-slate-400">{p.phone || 'No phone'}</p>
                         </td>
                         <td className="px-6 py-4">
                           {p.checkedIn ? (
@@ -161,18 +175,30 @@ export default function EventDetail() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col">
-                            <span className="text-sm text-slate-600">{p.email}</span>
+                            <span className="text-sm text-slate-600 font-medium">{p.email}</span>
+                            <div className="mt-1">
+                               {p.emailSent ? (
+                                 <span className="inline-flex items-center text-[10px] text-green-600 font-semibold uppercase tracking-wider">
+                                   <CheckCircle size={10} className="mr-1" /> Ticket Sent
+                                 </span>
+                               ) : (
+                                 <span className="inline-flex items-center text-[10px] text-amber-600 font-semibold uppercase tracking-wider">
+                                   <XCircle size={10} className="mr-1" /> Not Sent
+                                 </span>
+                               )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end space-x-2">
-                            <button onClick={() => resendMutation.mutate(p._id)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Resend"><Send size={18} /></button>
-                            <button onClick={() => deleteMutation.mutate(p._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="Delete"><Trash2 size={18} /></button>
+                            <button onClick={() => resendMutation.mutate(p._id)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg" title="Resend Ticket"><Send size={18} /></button>
+                            <button onClick={() => deleteMutation.mutate(p._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="Delete Participant"><Trash2 size={18} /></button>
                           </div>
                         </td>
                       </tr>
                     ))
                   )}
+
                 </tbody>
               </table>
             </div>
@@ -182,3 +208,4 @@ export default function EventDetail() {
     </div>
   );
 }
+

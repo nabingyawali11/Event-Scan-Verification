@@ -3,6 +3,7 @@ const {
     getParticipantsByEvent, 
     uploadCSV, 
     resendEmail, 
+    bulkSendEmails,
     deleteParticipant 
 } = require('../controllers/participant.controller');
 const { protect } = require('../middleware/auth.middleware');
@@ -11,6 +12,8 @@ const upload = require('../middleware/upload.middleware');
 router.get('/:eventId', protect, getParticipantsByEvent);
 router.post('/upload', protect, upload.single('csv'), uploadCSV);
 router.post('/:id/resend', protect, resendEmail);
+router.post('/bulk-send/:eventId', protect, bulkSendEmails);
 router.delete('/:id', protect, deleteParticipant);
+
 
 module.exports = router;

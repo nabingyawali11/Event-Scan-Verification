@@ -92,7 +92,62 @@ exports.resendEmail = async (req, res) => {
   }
 };
 
+exports.bulkSendEmails = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { force } = req.query; // Add force parameter to send to everyone
+    
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+
+    // Build query: if force is true, get all. Otherwise, only get those not sent.
+    const query = { event: eventId };
+    if (force !== 'true') {
+      query.emailSent = { $ne: true };
+    }
+
+    const participants = await Participant.find(query);
+
+    if (participants.length === 0) {
+      return res.json({ 
+        message: force === 'true' ? 'No participants found to send to' : 'No pending emails to send', 
+        count: 0 
+      });
+    }
+
+    const results = { success: 0, failed: 0 };
+
+    for (const participant of participants) {
+      try {
+        await sendTicketEmail({ 
+          participant, 
+          event, 
+          qrDataUrl: participant.qrImageUrl 
+        });
+
+        await Participant.findByIdAndUpdate(participant._id, { 
+          emailSent: true, 
+          emailSentAt: new Date() 
+        });
+        results.success++;
+      } catch (err) {
+        console.error(`Bulk send failed for ${participant.email}:`, err.message);
+        results.failed++;
+      }
+    }
+
+    res.json({ 
+      message: `Bulk sending complete: ${results.success} tickets sent, ${results.failed} failed.`, 
+      results 
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 exports.deleteParticipant = async (req, res) => {
+
   try {
     await Participant.findByIdAndDelete(req.params.id);
     res.json({ message: 'Participant deleted' });

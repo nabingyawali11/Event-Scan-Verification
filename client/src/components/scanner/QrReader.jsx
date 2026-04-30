@@ -6,15 +6,19 @@ import { CheckCircle2, AlertCircle, XCircle, RefreshCw, User, Mail, Calendar } f
 export default function QrReader() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const scannerRef = useRef(null);
 
-  useEffect(() => {
+  const startScanner = () => {
     if (scannerRef.current) return;
+    setError(null);
 
     const scanner = new Html5QrcodeScanner('qr-reader', {
       fps: 10,
       qrbox: { width: 250, height: 250 },
       aspectRatio: 1.0,
+      rememberLastUsedCamera: true,
+      supportedScanTypes: [0] // 0 = QR_CODE
     });
 
     scanner.render(
@@ -32,13 +36,22 @@ export default function QrReader() {
           setLoading(false);
         }
       },
-      () => {}
+      (errorMessage) => {
+        // Only log errors that aren't "QR not found"
+        if (!errorMessage.includes("NotFoundException")) {
+            console.warn("Scanner Error:", errorMessage);
+        }
+      }
     );
 
     scannerRef.current = scanner;
+  };
+
+  useEffect(() => {
+    startScanner();
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
+        scannerRef.current.clear().catch((e) => console.error("Clear error:", e));
         scannerRef.current = null;
       }
     };
@@ -55,12 +68,19 @@ export default function QrReader() {
         <div id="qr-reader" className="w-full !border-none" />
 
         {!result && !loading && (
-          <div className="p-6 bg-amber-50 border-t border-amber-100">
-             <div className="flex items-start space-x-3">
+          <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col space-y-4">
+             <button 
+                onClick={startScanner}
+                className="w-full py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-all flex items-center justify-center space-x-2"
+             >
+                <RefreshCw size={18} />
+                <span>Retry Camera</span>
+             </button>
+
+             <div className="flex items-start space-x-3 bg-amber-50 p-4 rounded-xl border border-amber-100">
                 <AlertCircle className="text-amber-600 shrink-0" size={18} />
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  <strong>Note:</strong> Camera access requires a secure connection (HTTPS). 
-                  If you are testing on a mobile device, ensure you are using a secure tunnel or localhost.
+                <p className="text-[10px] text-amber-800 leading-relaxed uppercase font-bold tracking-tight">
+                  Camera requires HTTPS. Grant permission when prompted.
                 </p>
              </div>
           </div>

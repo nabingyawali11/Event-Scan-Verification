@@ -22,7 +22,7 @@ exports.uploadCSV = async (req, res) => {
 
     if (!req.file) return res.status(400).json({ message: 'Please upload a CSV file' });
 
-    const rows = await parseCSV(req.file.path);
+    const rows = await parseCSV(req.file.buffer);
     const results = { success: 0, failed: 0, errors: [] };
 
     for (const row of rows) {

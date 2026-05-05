@@ -1,20 +1,16 @@
-const fs = require('fs');
 const csv = require('csv-parser');
+const { Readable } = require('stream');
 
-const parseCSV = (filePath) => {
+const parseCSV = (buffer) => {
   return new Promise((resolve, reject) => {
     const results = [];
-    fs.createReadStream(filePath)
+    const stream = Readable.from(buffer.toString());
+
+    stream
       .pipe(csv())
       .on('data', (row) => results.push(row))
-      .on('end', () => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        resolve(results);
-      })
-      .on('error', (err) => {
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-        reject(err);
-      });
+      .on('end', () => resolve(results))
+      .on('error', (err) => reject(err));
   });
 };
 

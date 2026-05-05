@@ -3,6 +3,7 @@ const Event = require('../models/Event');
 const { parseCSV } = require('../services/csv.service');
 const { generateToken, generateQRCode } = require('../services/qr.service');
 const { sendTicketEmail } = require('../services/email.service');
+const { uploadQRCode } = require('../services/cloudinary.service');
 
 exports.getParticipantsByEvent = async (req, res) => {
   try {
@@ -35,7 +36,10 @@ exports.uploadCSV = async (req, res) => {
         }
 
         const token = generateToken();
-        const qrDataUrl = await generateQRCode(token);
+        const qrBase64 = await generateQRCode(token);
+        
+        // Upload to Cloudinary
+        const qrCloudinaryUrl = await uploadQRCode(qrBase64, `event_${eventId}`);
 
         const participant = await Participant.create({
           name,
@@ -43,12 +47,12 @@ exports.uploadCSV = async (req, res) => {
           phone,
           event: eventId,
           token,
-          qrImageUrl: qrDataUrl,
+          qrImageUrl: qrCloudinaryUrl,
         });
 
         // Try to send email
         try {
-          await sendTicketEmail({ participant, event, qrDataUrl });
+          await sendTicketEmail({ participant, event, qrDataUrl: participant.qrImageUrl });
           await Participant.findByIdAndUpdate(participant._id, {
             emailSent: true, emailSentAt: new Date(),
           });
@@ -75,10 +79,18 @@ exports.resendEmail = async (req, res) => {
     const participant = await Participant.findById(req.params.id).populate('event');
     if (!participant) return res.status(404).json({ message: 'Participant not found' });
 
+    let qrUrl = participant.qrImageUrl;
+
+    // Handle legacy base64 data
+    if (qrUrl && qrUrl.startsWith('data:image')) {
+      qrUrl = await uploadQRCode(qrUrl, `event_${participant.event._id}`);
+      await Participant.findByIdAndUpdate(req.params.id, { qrImageUrl: qrUrl });
+    }
+
     await sendTicketEmail({ 
         participant, 
         event: participant.event, 
-        qrDataUrl: participant.qrImageUrl 
+        qrDataUrl: qrUrl 
     });
 
     await Participant.findByIdAndUpdate(req.params.id, { 
@@ -119,10 +131,18 @@ exports.bulkSendEmails = async (req, res) => {
 
     for (const participant of participants) {
       try {
+        let qrUrl = participant.qrImageUrl;
+
+        // If for some reason it's still base64 (legacy data), upload it now
+        if (qrUrl && qrUrl.startsWith('data:image')) {
+          qrUrl = await uploadQRCode(qrUrl, `event_${eventId}`);
+          await Participant.findByIdAndUpdate(participant._id, { qrImageUrl: qrUrl });
+        }
+
         await sendTicketEmail({ 
           participant, 
           event, 
-          qrDataUrl: participant.qrImageUrl 
+          qrDataUrl: qrUrl 
         });
 
         await Participant.findByIdAndUpdate(participant._id, { 

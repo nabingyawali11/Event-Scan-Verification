@@ -15,7 +15,7 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(url, {
       // This ensures your data goes into the correct database inside your cluster
-      dbName: "event_qr_verification",
+      dbName: "qr_verification",
     });
 
     console.log(`✅ MongoDB Connected !!!!!`);

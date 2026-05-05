@@ -3,12 +3,13 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendTicketEmail = async ({ participant, event, qrDataUrl }) => {
-  const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '');
-  const qrBuffer = Buffer.from(base64Data, 'base64');
-
   const fromAddress = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+  
+  // Check if qrDataUrl is a Cloudinary URL or a base64 data URL
+  const isExternalUrl = qrDataUrl.startsWith('http');
+  const qrSrc = isExternalUrl ? qrDataUrl : 'cid:ticket-qr';
 
-  await resend.emails.send({
+  const emailData = {
     from: `${event.name} <${fromAddress}>`,
     to: participant.email,
     subject: `🎟️ Your Entry Ticket: ${event.name}`,
@@ -43,7 +44,7 @@ const sendTicketEmail = async ({ participant, event, qrDataUrl }) => {
               
               <div class="qr-section">
                 <div class="qr-container">
-                  <img src="cid:qrcode" alt="QR Code" class="qr-image"/>
+                  <img src="${qrSrc}" alt="QR Code" class="qr-image"/>
                 </div>
                 <p class="important-note">Please show this QR code at the entry gate.</p>
               </div>
@@ -56,13 +57,21 @@ const sendTicketEmail = async ({ participant, event, qrDataUrl }) => {
       </body>
       </html>
     `,
-    attachments: [{
+  };
+
+  // If it's base64, we need to add it as an attachment for CID to work
+  if (!isExternalUrl) {
+    const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+    const qrBuffer = Buffer.from(base64Data, 'base64');
+    emailData.attachments = [{
       filename: 'ticket-qr.png',
-      content: qrBuffer.toString('base64'),
+      content: qrBuffer,
       contentType: 'image/png',
-      contentId: 'qrcode'
-    }],
-  });
+      contentId: '<ticket-qr>'
+    }];
+  }
+
+  await resend.emails.send(emailData);
 };
 
 module.exports = { sendTicketEmail };
